@@ -23,8 +23,8 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 	ipMergeBlob := md["ip_merge_blob"][0]
 	uuid := md["uuid"][0]
 
-	log.Println("IP Merge blob: ", ipMergeBlob)
-	log.Println("UUID: ", uuid)
+	// log.Println("IP Merge blob: ", ipMergeBlob)
+	// log.Println("UUID: ", uuid)
 
 	//connect merge-blob-service
 	connMergeBlobService, err := grpc.NewClient(ipMergeBlob, grpc.WithInsecure())
@@ -50,13 +50,24 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 	cmd := exec.Command("ffmpeg",
 		"-f", "webm", // Định dạng đầu vào là WebM
 		"-i", "pipe:0", // Nhận từ stdin
-		"-f", "webm", // Định dạng đầu ra là WebM
-		"-vcodec", "libvpx", // Bộ mã hóa video VP8
-		"-s", "256*144", // Chuyển đổi độ phân giải video xuống 480p (256*144)
-		"-acodec", "libopus", // Bộ mã hóa âm thanh Opus
-		"-b:a", "128k", // Giữ bitrate âm thanh ở mức 64 kbps (âm thanh giữ nguyên chất lượng)
+		"-f", "matroska", // Định dạng đầu ra là WebM
+		"-vf", "scale=-2:360", // Giảm độ phân giải để giảm tải CPU
+		"-preset", "ultrafast",
+		"-vcodec", "libx264", // Bộ mã hóa video VP8
+		"-acodec", "aac",
+		"-c:a", "copy", // Giữ bitrate âm thanh ở mức 64 kbps (âm thanh giữ nguyên chất lượng)
 		"pipe:1", // Ghi ra stdout
 	)
+
+	// original
+	// cmd := exec.Command("ffmpeg",
+	// 	"-f", "webm", // Định dạng đầu vào là WebM
+	// 	"-i", "pipe:0", // Nhận dữ liệu từ stdin
+	// 	"-f", "matroska",
+	// 	"-c:v", "copy", // Sao chép luồng video, không mã hóa lại
+	// 	"-c:a", "copy", // Sao chép luồng âm thanh, không mã hóa lại
+	// 	"pipe:1", // Xuất dữ liệu ra stdout
+	// )
 
 	cmd.Stdin = inputReader
 	cmd.Stdout = outputWriter
@@ -65,13 +76,13 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 	// Start ffmpeg
 	err = cmd.Start()
 	if err != nil {
-		log.Fatalf("Lỗi khi khởi động ffmpeg: %v", err)
+		log.Fatalf("error start ffmpeg: %v", err)
 	}
 	defer cmd.Wait()
 
 	// log info
-	log.Println("UUID: ", uuid)
-	log.Println("IP Merge blob server: ", ipMergeBlob)
+	// log.Println("UUID: ", uuid)
+	// log.Println("IP Merge blob server: ", ipMergeBlob)
 
 	// Read output
 	go func() {
@@ -82,16 +93,16 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 			n, err := outputReader.Read(buffer)
 
 			if err == io.EOF {
-				log.Println("Kết thúc luồng đầu ra từ ffmpeg")
+				log.Println("error output ffmpeg")
 				break
 			}
 
 			if err != nil {
-				log.Printf("Lỗi khi đọc từ ffmpeg: %v", err)
+				log.Printf("error read ffmpeg: %v", err)
 				break
 			}
 
-			log.Printf("Data encoding: %d", len(buffer[:n]))
+			// log.Printf("Data encoding: %d", len(buffer[:n]))
 
 			streamMergeBlob.Send(&servicegrpc.SendMergeBlobRequest{
 				Blob: buffer[:n],
@@ -112,8 +123,8 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 
 	for {
 		req, err := stream.Recv()
-		log.Println("Error: ", err)
 
+		// log.Println("Error: ", err)
 		if err == io.EOF {
 			log.Println("Stream ended by client.")
 			return stream.SendAndClose(&servicegrpc.SendBlobQuantityResponse{})
@@ -124,8 +135,7 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 			return err
 		}
 
-		log.Println("Mess: ", len(req.Blob))
-
+		// log.Println("Mess: ", len(req.Blob))
 		chanBlob <- req.Blob
 	}
 }
