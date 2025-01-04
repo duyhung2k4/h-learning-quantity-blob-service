@@ -48,25 +48,27 @@ func (h *grpcHandle) SendBlobQuantity(stream grpc.ClientStreamingServer[serviceg
 
 	// config ffmpeg
 	cmd := exec.Command("ffmpeg",
-		"-f", "webm", // Định dạng đầu vào là WebM
+		"-f", "webm", // Định dạng đầu vào
 		"-i", "pipe:0", // Nhận từ stdin
-		"-f", "matroska", // Định dạng đầu ra là WebM
-		"-vf", "scale=-2:360", // Giảm độ phân giải để giảm tải CPU
-		"-preset", "ultrafast",
-		"-vcodec", "libx264", // Bộ mã hóa video VP8
-		"-acodec", "aac",
-		"-c:a", "copy", // Giữ bitrate âm thanh ở mức 64 kbps (âm thanh giữ nguyên chất lượng)
+		"-vf", "scale=-2:360", // Giảm độ phân giải
+		"-preset", "ultrafast", // Cấu hình preset nhanh
+		"-vcodec", "libx264", // Bộ mã hóa video H.264
+		"-acodec", "aac", // Bộ mã hóa âm thanh AAC
+		"-fflags", "+genpts", // Đảm bảo timestamp chính xác
+		"-movflags", "+frag_keyframe+empty_moov", // Đảm bảo phát trực tiếp
+		"-f", "mpegts", // Định dạng đầu ra là MPEG-TS
 		"pipe:1", // Ghi ra stdout
 	)
 
 	// original
 	// cmd := exec.Command("ffmpeg",
-	// 	"-f", "webm", // Định dạng đầu vào là WebM
-	// 	"-i", "pipe:0", // Nhận dữ liệu từ stdin
-	// 	"-f", "matroska",
-	// 	"-c:v", "copy", // Sao chép luồng video, không mã hóa lại
-	// 	"-c:a", "copy", // Sao chép luồng âm thanh, không mã hóa lại
-	// 	"pipe:1", // Xuất dữ liệu ra stdout
+	// 	"-f", "webm", // Định dạng đầu vào
+	// 	"-i", "pipe:0", // Nhận từ stdin
+	// 	"-c:v", "copy", // Copy codec video, không mã hóa lại
+	// 	"-c:a", "copy", // Copy codec âm thanh, không mã hóa lại
+	// 	"-fflags", "+genpts", // Đảm bảo timestamp chính xác
+	// 	"-f", "mpegts", // Định dạng đầu ra là MPEG-TS
+	// 	"pipe:1", // Ghi ra stdout
 	// )
 
 	cmd.Stdin = inputReader
