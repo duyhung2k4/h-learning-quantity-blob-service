@@ -2,7 +2,7 @@ package grpchandle
 
 import (
 	appcommon "app/cmd/quantity-blob-service/app_common"
-	"app/generated/grpc/servicegrpc"
+	"app/generated/proto/servicegrpc"
 	constant "app/internal/constants"
 	logapp "app/pkg/log"
 	"context"

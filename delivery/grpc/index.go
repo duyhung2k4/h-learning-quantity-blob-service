@@ -1,7 +1,7 @@
 package grpchandle
 
 import (
-	"app/generated/grpc/servicegrpc"
+	"app/generated/proto/servicegrpc"
 	"app/internal/connection"
 )
 
